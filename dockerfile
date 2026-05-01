@@ -6,6 +6,11 @@ WORKDIR /app
 # ------ Installation des packages
 COPY requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
+# LightGBM a besoin de bibliothèques en C++ qui ne sont bien évidemment pas incluses dans la release pypi
+# Prions pour que le comportement de ces dépendances ne change pas
+RUN apt-get update && apt-get install -y --no-install-recommends apt-utils
+RUN apt-get -y install curl
+RUN apt-get install libgomp1
 
 # -------- Définition des variables d'environnement ---------
 ARG MODEL_NAME
