@@ -1,2 +1,2 @@
 . ./envars.sh
-docker build -f dockerfile -t dockerized_model_api --build-arg DATADIR="$DATADIR" --build-arg GENERATED_DIR="$GENERATED_DIR" --build-arg MODEL_NAME="$MODEL_NAME" --build-arg MODEL_VERSION="$MODEL_VERSION" .
+docker build -f dockerfile -t dockerized_model_api --build-arg MODEL_NAME="$MODEL_NAME" --build-arg MODEL_VERSION="$MODEL_VERSION" .

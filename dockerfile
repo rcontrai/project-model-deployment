@@ -8,19 +8,16 @@ COPY requirements.txt /app
 RUN pip install --no-cache-dir -r requirements.txt
 
 # -------- Définition des variables d'environnement ---------
-ARG DATADIR
-ARG GENERATED_DIR
 ARG MODEL_NAME
 ARG MODEL_VERSION
 
-ENV DATADIR=$DATADIR
-ENV GENERATED_DIR=$GENERATED_DIR
 ENV MODEL_NAME=$MODEL_NAME
 ENV MODEL_VERSION=$MODEL_VERSION
 
 # ------- Transfert des fichiers --------
+COPY ./data /app/data/
+COPY ./models /app/models/
 COPY ./src/* /app/
-COPY ./models /app/
 
 # ------ Lancement de l'API 
 EXPOSE 8000

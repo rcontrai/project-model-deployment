@@ -13,10 +13,12 @@ import os
 from math import isnan
 
 # Variables d'environnement
-DATADIR = os.getenv("DATADIR")
-GENERATED_DIR = os.getenv("GENERATED_DIR")
 MODEL_NAME = os.getenv("MODEL_NAME")
 MODEL_VERSION = os.getenv("MODEL_VERSION")
+
+# Autres configurations
+DATADIR = os.path.abspath("./data")
+GENERATED_DIR = os.path.abspath("./generated") # pas vraiment utilisé par le code
 
 # L'ensemble des demandes enregistrées
 app_train = pd.read_parquet(os.path.join(DATADIR, "application_train_smaller.parquet"))
