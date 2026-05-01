@@ -11,12 +11,12 @@ import pickle
 import json
 import os
 from math import isnan
-from enum import Enum
-# Devraient être des variables d'environnement
-DATADIR = "../../projet MLOps 1/generated"
-GENERATED_DIR = "../../projet MLOps 1/generated/"
-MODEL_NAME = "LGBMClassifier-reduced_features"
-MODEL_VERSION = 10
+
+# Variables d'environnement
+DATADIR = os.getenv("DATADIR")
+GENERATED_DIR = os.getenv("GENERATED_DIR")
+MODEL_NAME = os.getenv("MODEL_NAME")
+MODEL_VERSION = os.getenv("MODEL_VERSION")
 
 # L'ensemble des demandes enregistrées
 app_train = pd.read_parquet(os.path.join(DATADIR, "application_train_smaller.parquet"))

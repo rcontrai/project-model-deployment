@@ -1,3 +1,8 @@
+envars.sh
+
+
+# Template de base généré par GitHub
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[codz]
