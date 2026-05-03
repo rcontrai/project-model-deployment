@@ -81,6 +81,8 @@ def shrink_bureau(bureau:pd.DataFrame)->pd.DataFrame:
     Nécessaire avant d'appliquer le pipeline de préparation.
     """
     bureau_smaller = bureau[INPUTS_BUREAU].copy()
+    # On a besoin que la colonne SK_ID_BUREAU existe mais son contenu importe peu (du moment qu'elle n'est pas vide)
+    bureau_smaller["SK_ID_BUREAU"] = False
     # Encodage des catégories
     credit_active_dict = {"Closed" : 0, #Encodage arbitraire, à reprendre avant de le passer au modèle
                         "Active" : 1,
@@ -91,7 +93,7 @@ def shrink_bureau(bureau:pd.DataFrame)->pd.DataFrame:
     bureau_smaller["DAYS_CREDIT"] = - bureau_smaller["DAYS_CREDIT"]
     # optimisation des types
     bureau_smaller["CREDIT_ACTIVE"] = bureau_smaller["CREDIT_ACTIVE"].astype("uint8")
-    ints = ["SK_ID_CURR", "SK_ID_BUREAU", "DAYS_CREDIT"]
+    ints = ["SK_ID_CURR", "DAYS_CREDIT"]
     bureau_smaller[ints] = bureau_smaller[ints].astype("int32")
     bureau_smaller[["AMT_CREDIT_MAX_OVERDUE", "AMT_CREDIT_SUM"]] = bureau_smaller[["AMT_CREDIT_MAX_OVERDUE", "AMT_CREDIT_SUM"]].astype("float32")
     return bureau_smaller
@@ -104,6 +106,8 @@ def shrink_prev_app(prev_app:pd.DataFrame)->pd.DataFrame:
     Nécessaire avant d'appliquer le pipeline de préparation.
     """
     prev_app_smaller = prev_app[INPUTS_PREV_APP].copy()
+    # On a besoin que la colonne SK_ID_PREV existe mais son contenu importe peu (du moment qu'elle n'est pas vide)
+    prev_app_smaller["SK_ID_PREV"] = False
     # Drop des demandes incomplètes (0.3%), qui sont aussi présentes en version complète dans la table
     prev_app_smaller.drop(prev_app.index[prev_app["NFLAG_LAST_APPL_IN_DAY"] == 0], axis=0, inplace=True)
     # Inversion des temps
@@ -324,8 +328,8 @@ class Data_processor_prev_app():
     def cleanup_extreme_values(self, prev_app:pd.DataFrame, train:bool=False)->pd.DataFrame:
         # Protection générique contre les valeurs trop extrêmes
         if train:
-            self.auto_quantities = prev_app.select_dtypes([float, int]).columns # inclut aussi SK_ID_CURR et SK_ID_PREV
-            self.auto_quantities = self.auto_quantities.drop(["SK_ID_PREV", "SK_ID_CURR"])
+            self.auto_quantities = prev_app.select_dtypes([float, int]).columns # inclut aussi SK_ID_CURR
+            self.auto_quantities = self.auto_quantities.drop(["SK_ID_CURR"])
             self.auto_bottom_thresholds = prev_app[self.auto_quantities].quantile(0.001)
             self.auto_top_thresholds = prev_app[self.auto_quantities].quantile(0.999)
         prev_app[self.auto_quantities] = prev_app[self.auto_quantities].clip(lower=self.auto_bottom_thresholds, upper=self.auto_top_thresholds, axis=1)
@@ -442,7 +446,7 @@ class Data_processor_bureau():
         # Protection générique contre les valeurs trop extrêmes pour les autres quantités
         if train:
             self.auto_quantities = bureau_clean.select_dtypes([float, int]).columns
-            self.auto_quantities = self.auto_quantities.drop(["SK_ID_BUREAU", "SK_ID_CURR"])
+            self.auto_quantities = self.auto_quantities.drop(["SK_ID_CURR"])
             self.auto_quantities_to_clip = self.auto_quantities.difference(pd.Index(self.focus_cols))
             self.auto_bottom_thresholds = bureau_clean[self.auto_quantities_to_clip].quantile(0.001)
             self.auto_top_thresholds = bureau_clean[self.auto_quantities_to_clip].quantile(0.999)
