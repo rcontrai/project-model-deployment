@@ -8,7 +8,6 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1
 # Copie depuis le cache au lieu de créer des liens car c'est un volume monté
 ENV UV_LINK_MODE=copy
-
 # Permet à UV d'attendre plus longtemps pour installer les packages, en cas de projet avec beaucoup de dépendances
 ENV UV_HTTP_TIMEOUT=1000
 
