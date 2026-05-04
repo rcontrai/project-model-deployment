@@ -39,4 +39,4 @@ jobs:
 
     - name: Test
       run: |
-        uv run pytest --cov --cov-report=term-missing || (uv run pytest --collect-only | grep -q "no tests collected" && echo "No tests found, skipping failure." || exit 1)
+        uv run pytest
