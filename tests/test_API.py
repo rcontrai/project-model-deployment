@@ -2,10 +2,6 @@
 
 from fastapi.testclient import TestClient
 from pytest import approx
-import os
-
-os.environ["MODEL_NAME"] = "LGBMClassifier-reduced_features"
-os.environ["MODEL_VERSION"] = "10"
 from src.app import app_predict, applications, pipeline, threshold, model_prediction
 
 client = TestClient(app_predict)

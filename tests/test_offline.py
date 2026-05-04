@@ -3,10 +3,6 @@
 import math
 import pandas as pd
 import numpy as np
-import os
-
-os.environ["MODEL_NAME"] = "LGBMClassifier-reduced_features"
-os.environ["MODEL_VERSION"] = "10"
 from src.app import threshold, pipeline, applications, model_prediction
 
 

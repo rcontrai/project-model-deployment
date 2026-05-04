@@ -37,5 +37,7 @@ jobs:
         find . -type f -name "*.pyc" -delete
 
     - name: Test
+      env:
+        PLACEHOLDER_ENV_VAR: "test_placeholder"
       run: |
         uv run pytest
