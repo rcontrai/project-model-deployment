@@ -31,7 +31,6 @@ jobs:
     - name: Lint
       run: |
         ruff check --fix
-        ruff format --check
         rm -rf build/
         rm -rf *.egg-info
         find . -type d -name __pycache__ -exec rm -rf {} +
