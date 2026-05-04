@@ -21,10 +21,12 @@ DATADIR = os.path.abspath("./data")
 GENERATED_DIR = os.path.abspath("./generated") # pas vraiment utilisé par le code
 
 # L'ensemble des demandes enregistrées
-app_train = pd.read_parquet(os.path.join(DATADIR, "application_train_smaller.parquet"))
-app_train.drop("TARGET", axis=1, inplace=True) # TARGET n'est pas un input du modèle
-app_test = pd.read_parquet(os.path.join(DATADIR, "application_test_smaller.parquet"))
-applications = pd.concat([app_train, app_test], axis=0)
+def load_data()->pd.DataFrame:
+    app_train = pd.read_parquet(os.path.join(DATADIR, "application_train_smaller.parquet"))
+    app_train.drop("TARGET", axis=1, inplace=True) # TARGET n'est pas un input du modèle
+    app_test = pd.read_parquet(os.path.join(DATADIR, "application_test_smaller.parquet"))
+    return pd.concat([app_train, app_test], axis=0, ignore_index=True)
+applications = load_data()
 
 # Tables secondaires
 prev_app_path = os.path.join(DATADIR, "previous_application_smaller.parquet")
@@ -49,6 +51,14 @@ def clean_up_nans(features_dict:dict)->dict:
         if isnan(value):
             features_dict[key] = None
     return features_dict
+
+def model_prediction(pipeline:Pipeline, threshold:float, features:pd.DataFrame)->tuple[bool,float]:
+    proba = pipeline.predict_proba(features)[0,1]
+    pred = (proba >= threshold)
+    proba = float(proba)
+    pred = bool(pred)
+    return pred, proba
+
 
 # API
 
@@ -133,8 +143,5 @@ def predict_default_risk(input_data:Application_data):
     (true=demande à rejeter) et d'une probabilité de retard de paiement (proche de 1=risque élevé)
     """
     features = pd.DataFrame(input_data.model_dump(), index=[0])
-    proba = pipeline.predict_proba(features)[0,1]
-    pred = (proba >= threshold)
-    proba = float(proba)
-    pred = bool(pred)
+    pred, proba = model_prediction(pipeline, threshold, features)
     return {"prediction":pred, "probability":proba}
