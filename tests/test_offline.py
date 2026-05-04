@@ -12,7 +12,8 @@ from src.app import threshold, pipeline, applications, model_prediction
 
 # Tests sur threshold 
 def test_threshold():
-    assert type(threshold) == float
+    
+    assert isinstance(threshold, float)
     assert not math.isnan(threshold)
     # valeurs : selon le type de modèle il peut être dans [0,1] ou dans R donc difficile de tester
 
@@ -64,8 +65,8 @@ def test_model():
     for sk_id_curr in test_examples:
         features_in = applications[applications["SK_ID_CURR"] == sk_id_curr]
         pred, proba = model_prediction(pipeline, threshold, features_in)
-        assert type(pred) == bool
-        assert type(proba) == float
+        assert isinstance(pred, bool)
+        assert isinstance(pred, bool)
         assert not math.isnan(proba)
         pred_list.append(pred)
         proba_list.append(proba)

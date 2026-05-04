@@ -3,7 +3,7 @@
 import os
 import pandas as pd
 from sklearn.preprocessing import StandardScaler, PowerTransformer
-from sklearn.experimental import enable_iterative_imputer # NB: version de scikit-learn : 1.8.0
+# from sklearn.experimental import enable_iterative_imputer # NB: version de scikit-learn : 1.8.0
 from sklearn.impute import SimpleImputer#, IterativeImputer
 # from sklearn.linear_model import BayesianRidge
 # from sklearn.linear_model import LinearRegression
@@ -34,7 +34,7 @@ def shrink_app(app:pd.DataFrame, target:pd.Series=None)->pd.DataFrame:
     Nécessaire avant d'appliquer le pipeline de préparation.
     """
     app_smaller = app[INPUTS_APP].copy()
-    if not (target is None):
+    if target is not None:
         app_smaller["TARGET"] = target.astype('bool')
     # Encodage des catégories pour gagner de la place (et du temps de transmission)
     name_contract_type_dict = {"Cash loans":False, "Revolving loans":True}
