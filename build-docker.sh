@@ -1,2 +1,2 @@
 . ./envars.sh
-docker build -f dockerfile -t dockerized_model_api --build-arg PLACEHOLDER_ENV_VAR="$PLACEHOLDER_ENV_VAR" .
+docker build -f Dockerfile -t dockerized_model_api --build-arg API_PORT="$API_PORT" .

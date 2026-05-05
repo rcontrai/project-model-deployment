@@ -1,1 +1,2 @@
-docker run -p 8000:8000 dockerized_model_api
+. ./envars.sh
+docker run -p "$API_PORT":"$API_PORT" dockerized_model_api
