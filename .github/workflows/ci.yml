@@ -4,18 +4,19 @@ on:
   pull_request:
 
 jobs:
-  test:
+  test-code:
+    name: code-tests
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Install uv
-      uses: astral-sh/setup-uv@v4
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         enable-cache: true
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version-file: "pyproject.toml"
 
@@ -23,10 +24,10 @@ jobs:
     - name: Install dependencies
       run: |
         uv venv
-        uv sync
+        uv sync --locked --no-dev
 
     - name: Install Ruff
-      uses: astral-sh/ruff-action@v3
+      uses: astral-sh/ruff-action@v4.0.0
 
     - name: Lint
       run: |
@@ -37,5 +38,22 @@ jobs:
         find . -type f -name "*.pyc" -delete
 
     - name: Test
+      env:
+        PLACEHOLDER_ENV_VAR: "test_placeholder"
       run: |
         uv run pytest
+  
+  test-build:
+    name: docker-build-test
+    needs : test-code
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v6
+    - name: docker-build
+      run: |
+        docker build \
+        -f Dockerfile \
+        -t dockerized_model_api \
+        --build-arg API_PORT="$API_PORT" \
+        .

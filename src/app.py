@@ -13,10 +13,11 @@ import os
 from math import isnan
 
 # Variables d'environnement
-MODEL_NAME = os.getenv("MODEL_NAME")
-MODEL_VERSION = os.getenv("MODEL_VERSION")
+# PLACEHOLDER_ENV_VAR = os.getenv("PLACEHOLDER_ENV_VAR")
 
 # Autres configurations
+MODEL_NAME = "LGBMClassifier-reduced_features"
+MODEL_VERSION = "10"
 DATADIR = os.path.abspath("./data")
 GENERATED_DIR = os.path.abspath("./generated") # pas vraiment utilisé par le code
 
