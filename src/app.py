@@ -13,9 +13,7 @@ import os
 from math import isnan
 
 # Variables d'environnement
-# Juste là pour montrer où on irait chercher les variables d'environnement si on en avait l'utilité
-PLACEHOLDER_ENV_VAR = os.getenv("PLACEHOLDER_ENV_VAR")
-PLACEHOLDER_ENV_VAR = PLACEHOLDER_ENV_VAR # Pour calmer ruff au sujet des variables inutilisées
+# PLACEHOLDER_ENV_VAR = os.getenv("PLACEHOLDER_ENV_VAR")
 
 # Autres configurations
 MODEL_NAME = "LGBMClassifier-reduced_features"
