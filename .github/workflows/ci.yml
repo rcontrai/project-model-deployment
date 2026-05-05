@@ -4,7 +4,8 @@ on:
   pull_request:
 
 jobs:
-  test:
+  test-code:
+    name: code-tests
     runs-on: ubuntu-latest
 
     steps:
@@ -41,3 +42,18 @@ jobs:
         PLACEHOLDER_ENV_VAR: "test_placeholder"
       run: |
         uv run pytest
+  
+  test-build:
+    name: docker-build-test
+    needs : test-code
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: docker-build
+      run: |
+        docker build \
+        -f Dockerfile \
+        -t dockerized_model_api \
+        --build-arg API_PORT="$API_PORT" \
+        .
