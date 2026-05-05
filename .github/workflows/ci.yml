@@ -9,14 +9,14 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Install uv
-      uses: astral-sh/setup-uv@v4
+      uses: astral-sh/setup-uv@v8.1.0
       with:
         enable-cache: true
 
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v6
       with:
         python-version-file: "pyproject.toml"
 
@@ -27,7 +27,7 @@ jobs:
         uv sync --locked --no-dev
 
     - name: Install Ruff
-      uses: astral-sh/ruff-action@v3
+      uses: astral-sh/ruff-action@v4.0.0
 
     - name: Lint
       run: |
@@ -49,7 +49,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: docker-build
       run: |
         docker build \
