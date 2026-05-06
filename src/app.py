@@ -99,6 +99,7 @@ API de prédiction du risque de retard de paiement
 Cette API fournit des prédictions du risque qu'un demandeur de prêt se retrouve en retard de paiement.
 
 **Types de requêtes disponibles**
+ - */get_application_id_limits* : renvoie l'intervalle des valeurs permises en entrée de */get_application_data*
  - */get_application_data* : à partir de l'ID d'une demande, récupère dans la base de donnée les 
  informations sur la demande pertinentes pour effectuer une prédiction.
  - */predict* : prédiction du risque par un modèle de machine learning, sous la forme d'une décision
@@ -118,11 +119,19 @@ def root():
         "message" : "Application basique de prédiction de probabilité de retard de paiement",
         "status" : "running",
         "available_endpoints": {
+            "get allowed inputs for get data": "/get_application_id_limits",
             "get data": "/get_application_data",
-            "prédiction": "/predict",
+            "prediction": "/predict",
             "docs": "/docs",
         },
     }
+
+@app_predict.get("/get_application_id_limits")
+def get_application_id_limits():
+    """
+    Renvoie les valeurs minimales et maximales permises pour le paramètre sk_id_curr de get_application_data
+    """
+    return {"min":min_sk_id.item(), "max":max_sk_id.item()}
 
 @app_predict.post("/get_application_data")
 def get_application_data(input_data:App_ID):
