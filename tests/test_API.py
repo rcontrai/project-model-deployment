@@ -2,7 +2,7 @@
 
 from fastapi.testclient import TestClient
 from pytest import approx
-from src.app import app_predict, applications, pipeline, threshold, model_prediction
+from src.api import app_predict, applications, pipeline, threshold, model_prediction
 
 client = TestClient(app_predict)
 test_examples = [ # exemples de test, identifiés par leur SK_ID_CURR

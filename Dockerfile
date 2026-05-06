@@ -44,4 +44,4 @@ COPY ./src/* /app/
 EXPOSE $API_PORT
 # Cette forme permet de paramétrer la commande exécutée avec des variables d'environnement sans casser la transmission normale des signaux
 SHELL ["/bin/sh", "-c"]
-CMD exec uvicorn app:app_predict --host 0.0.0.0 --port $API_PORT
+CMD exec uvicorn api:app_predict --host 0.0.0.0 --port $API_PORT
