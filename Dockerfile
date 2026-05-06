@@ -17,7 +17,7 @@ ENV UV_HTTP_TIMEOUT=1000
 COPY pyproject.toml uv.lock /app/
 # Installe les dépendances du projet en utilisant le lockfile et les paramètres, pour une vitesse maximale
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
+    uv sync --locked --no-dev --group ui
 
 # Activation de l'environnement virtuel
 ENV PATH="/app/.venv/bin:$PATH"
