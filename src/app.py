@@ -141,7 +141,7 @@ def get_application_data(input_data:App_ID):
     """
     features = applications[applications["SK_ID_CURR"] == input_data.sk_id_curr]
     if features.shape[0] == 0:
-        raise HTTPException(500, f"Provided ID ({input_data.sk_id_curr}) not in internal database")
+        raise HTTPException(404, f"Provided ID ({input_data.sk_id_curr}) not in internal database")
     features_dict = features.loc[features.index[0]].to_dict()
     features_dict = clean_up_nans(features_dict)
     return features_dict
