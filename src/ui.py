@@ -1,0 +1,150 @@
+import streamlit as st
+import httpx
+
+# Configuration générale
+API_URL = "http://localhost:8000"
+
+# Fonctions d'appel à l'API
+@st.cache_data
+def get_application_id_limits():
+    with httpx.Client() as client:
+        response = client.get(API_URL + "/get_application_id_limits")
+        response.raise_for_status()
+        return response
+
+@st.cache_data
+def get_application_data(sk_id_curr:int):
+    with httpx.Client() as client:
+        response = client.post(API_URL + "/get_application_data",
+                                json={"sk_id_curr":str(sk_id_curr)})
+        response.raise_for_status()
+        return response
+
+@st.cache_data
+def get_prediction(predict_body:dict):
+    with httpx.Client() as client:
+        response = client.post(API_URL + "/predict", json=predict_body)
+        response.raise_for_status()
+        return response
+
+# Paramètres des entrées
+# Copié-collé des dictionnaires définis dans src.feature_engineering_small.shrink_app
+# On pourrait les rendre partagés si on était prêt à partager du code entre le frontend et le backend
+# Ou alors faire un endpoint d'API qui les transmet
+name_contract_type_dict = {"Cash loans":False, "Revolving loans":True}
+code_gender_dict = {"F":0, "M":1, "XNA":2}
+flag_own_car_dict = {"N":False, "Y":True}
+name_eduction_type_dict = {"Lower secondary" : 0,
+                        "Secondary / secondary special" : 1,
+                        "Incomplete higher" : 2,
+                        "Higher education" : 3,
+                        "Academic degree" : 4}
+name_family_status_dict = {'Married': 0,
+                        'Single / not married': 1,
+                        'Civil marriage': 2,
+                        'Separated': 3,
+                        'Widow': 4,
+                        'Unknown': 5}
+name_contract_type_options = tuple(name_contract_type_dict.keys())
+code_gender_options = tuple(code_gender_dict.keys())
+flag_own_car_options = tuple(flag_own_car_dict.keys())
+name_eduction_type_options = tuple(name_eduction_type_dict.keys())
+name_family_status_options = tuple(name_family_status_dict.keys())
+
+sk_id_curr_limits = get_application_id_limits().json()
+
+# Fonctions internes
+def sanitize_int(value, name:str):
+    if value is None:
+        raise ValueError(f"{name} cannot be empty")
+    try:
+        return int(value)
+    except TypeError as e:
+        raise(f"Could not convert value {value} of {name} into an integer:\n\"{e}\"")
+
+def sanitize_float(value, name:str):
+    if value is None:
+        raise ValueError(f"{name} cannot be empty")
+    try:
+        return float(value)
+    except TypeError as e:
+        raise ValueError(f"Could not convert value {value} of {name} into a float:\n\"{e}\"")
+
+def sanitize_optionnal_float(value, name:str):
+    if value is None:
+        return None
+    try:
+        return float(value)
+    except TypeError as e:
+        raise ValueError(f"Could not convert value {value} of {name} into a float:\n\"{e}\"")
+
+
+# Contenu de la page
+
+st.title("Default risk prediction app")
+
+if "id_submitted" not in st.session_state:
+    st.session_state.id_submitted = False
+if "data_submited" not in st.session_state:
+    st.session_state.data_submited = False
+
+with st.form("Application ID"):
+    sk_id_curr = st.number_input("Application ID", value=None, 
+                                 min_value=sk_id_curr_limits["min"], max_value=sk_id_curr_limits["max"],
+                                 format="%.0d", step=1)
+    if (sk_id_curr is not None):
+        sk_id_curr = int(sk_id_curr)
+    id_submitted = st.form_submit_button("Get application data")
+    id_submitted = id_submitted and (sk_id_curr is not None)
+    st.session_state.id_submitted = st.session_state.id_submitted or id_submitted
+
+if st.session_state.id_submitted:
+    get_app_data_response = get_application_data(sk_id_curr)
+    features_dict = get_app_data_response.json()
+    with st.form("Application data"):
+        data_submited = st.form_submit_button("Predict Default Risk")
+
+        name_contract_type = st.selectbox("Contract Type", name_contract_type_options, index=int(features_dict["NAME_CONTRACT_TYPE"]))
+        amt_credit = st.number_input("Loan Credit Amount", value=features_dict["AMT_CREDIT"], min_value=0., format="%.1d")
+        amt_annuity = st.number_input("Loan Annuity", value=features_dict["AMT_ANNUITY"], min_value=0., format="%.1d")
+        ext_source_1 = st.number_input("Credit score 1", value=features_dict["EXT_SOURCE_1"], min_value=0., max_value=1., format="%.4f")
+        ext_source_2 = st.number_input("Credit score 2", value=features_dict["EXT_SOURCE_2"], min_value=0., max_value=1., format="%.4f")
+        ext_source_3 = st.number_input("Credit score 3", value=features_dict["EXT_SOURCE_3"], min_value=0., max_value=1., format="%.4f")
+        code_gender = st.selectbox("Gender", code_gender_options, index=features_dict["CODE_GENDER"])
+        name_family_status = st.selectbox("Client's Family Status", name_family_status_options, index=features_dict["NAME_FAMILY_STATUS"])
+        name_eduction_type = st.selectbox("Level of Education", name_eduction_type_options, index=features_dict["NAME_EDUCATION_TYPE"])
+        flag_own_car = st.checkbox("Client Owns a Car", features_dict["FLAG_OWN_CAR"])
+        amt_income_total = st.number_input("Income", value=features_dict["AMT_INCOME_TOTAL"], min_value=0., format="%.1d")
+        days_employed = st.number_input("Duration of Current Job (in days)", value=features_dict["DAYS_EMPLOYED"], format="%.0d", step=365)
+        days_birth = st.number_input("Age (in days)", value=features_dict["DAYS_BIRTH"], format="%.0d", min_value=1, step=365)
+        days_id_publish = st.number_input("Age of Identity Document (in days)", value=features_dict["DAYS_ID_PUBLISH"], min_value=0, format="%.0d", step=365)
+        days_last_phone_change = st.number_input("Age of client's Phone (in days)", value=features_dict["DAYS_LAST_PHONE_CHANGE"], min_value=0, format="%.0d", step=365)
+
+    if data_submited:
+        data_ok=False
+        try :
+            predict_body = {
+                "SK_ID_CURR": sanitize_int(sk_id_curr, "Application ID"),
+                "NAME_CONTRACT_TYPE": name_contract_type_dict[name_contract_type],
+                "CODE_GENDER": code_gender_dict[code_gender],
+                "FLAG_OWN_CAR": flag_own_car,
+                "AMT_INCOME_TOTAL": sanitize_float(amt_income_total, "Income"),
+                "AMT_CREDIT": sanitize_float(amt_credit, "Loan Credit Amount"),
+                "AMT_ANNUITY": sanitize_optionnal_float(amt_annuity, "Loan Annuity"),
+                "NAME_EDUCATION_TYPE": name_eduction_type_dict[name_eduction_type],
+                "NAME_FAMILY_STATUS": name_family_status_dict[name_family_status],
+                "DAYS_BIRTH": sanitize_int(days_birth, "Age (in days)"),
+                "DAYS_EMPLOYED": sanitize_int(days_employed, "Duration of Current Job (in days)"),
+                "DAYS_ID_PUBLISH": sanitize_int(days_id_publish, "Age of Identity Document (in days)"),
+                "EXT_SOURCE_1": sanitize_optionnal_float(ext_source_1, "Credit score 1"),
+                "EXT_SOURCE_2": sanitize_optionnal_float(ext_source_2, "Credit score 2"),
+                "EXT_SOURCE_3": sanitize_optionnal_float(ext_source_3, "Credit score 3"),
+                "DAYS_LAST_PHONE_CHANGE": sanitize_int(days_last_phone_change, "Age of client's Phone (in days)")
+            }
+            data_ok = True
+        except ValueError as e:
+            st.error(str(e))
+        if data_ok:
+            predict_response = get_prediction(predict_body)
+            prediction = predict_response.json()
+            prediction
