@@ -1,2 +1,2 @@
 . ./envars.sh
-docker run -p "$API_PORT":"$API_PORT" dockerized_model_api
+docker run -p "$APP_PORT":"$APP_PORT" dockerized_model_api

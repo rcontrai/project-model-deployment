@@ -30,10 +30,10 @@ RUN apt-get install libgomp1
 
 
 # -------- Définition des variables d'environnement ---------
-ARG API_PORT
+ARG APP_PORT
 
-# pas utilisé par le programme 
-ENV API_PORT=$API_PORT 
+# Utilisé uniquement dans ce fichier 
+ENV APP_PORT=$APP_PORT 
 
 # ------- Transfert des fichiers --------
 COPY ./data /app/data/
@@ -41,7 +41,7 @@ COPY ./models /app/models/
 COPY ./src/* /app/
 
 # ------ Lancement de l'API 
-EXPOSE $API_PORT
+EXPOSE $APP_PORT
 # Cette forme permet de paramétrer la commande exécutée avec des variables d'environnement sans casser la transmission normale des signaux
 SHELL ["/bin/sh", "-c"]
-CMD exec uvicorn api:app_predict --host 0.0.0.0 --port $API_PORT
+CMD exec uvicorn api:app_predict --host 0.0.0.0 --port $APP_PORT
