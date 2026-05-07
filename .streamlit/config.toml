@@ -1,5 +1,8 @@
 [browser]
 gatherUsageStats = false
 
+[client]
+toolbarMode = "viewer"
+
 # Doit être en dernier pour permettre au dockerfile d'ajouter une ligne concernant le port
 [server]
