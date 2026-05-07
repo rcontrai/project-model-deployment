@@ -87,71 +87,90 @@ if "id_submitted" not in st.session_state:
     st.session_state.id_submitted = False
 if "data_submited" not in st.session_state:
     st.session_state.data_submited = False
+if "prediction" not in st.session_state:
+    st.session_state.prediction = None
 
-with st.form("Application ID"):
-    sk_id_curr = st.number_input("Application ID", value=None, 
-                                 min_value=sk_id_curr_limits["min"], max_value=sk_id_curr_limits["max"],
-                                 format="%.0d", step=1)
-    if (sk_id_curr is not None):
-        sk_id_curr = int(sk_id_curr)
-    id_submitted = st.form_submit_button("Get application data")
-    id_submitted = id_submitted and (sk_id_curr is not None)
-    st.session_state.id_submitted = st.session_state.id_submitted or id_submitted
+tabs = st.tabs(("📝Inputs", "🧮Prediction"), key="tabs") #📊monitoring
 
-if st.session_state.id_submitted:
-    get_app_data_response = get_application_data(sk_id_curr)
-    features_dict = get_app_data_response.json()
-    with st.form("Application data"):
-        data_submited = st.form_submit_button("Predict Default Risk")
-        col1, col2 = st.columns(2)
-        with col1:
-            name_contract_type = st.selectbox("Contract Type", name_contract_type_options, index=int(features_dict["NAME_CONTRACT_TYPE"]))
-            amt_credit = st.number_input("Loan Credit Amount", value=features_dict["AMT_CREDIT"], min_value=0., format="%.1d")
-            amt_annuity = st.number_input("Loan Annuity", value=features_dict["AMT_ANNUITY"], min_value=0., format="%.1d")
-            code_gender = st.selectbox("Gender", code_gender_options, index=features_dict["CODE_GENDER"])
-            name_eduction_type = st.selectbox("Level of Education", name_eduction_type_options, index=features_dict["NAME_EDUCATION_TYPE"])
-            amt_income_total = st.number_input("Income", value=features_dict["AMT_INCOME_TOTAL"], min_value=0., format="%.1d")
-            days_employed = st.number_input("Duration of Current Job (in days)", value=features_dict["DAYS_EMPLOYED"], format="%.0d", step=365)
-            days_birth = st.number_input("Age (in days)", value=features_dict["DAYS_BIRTH"], format="%.0d", min_value=1, step=365)
-        with col2:
-            ext_source_1 = st.number_input("Credit score 1", value=features_dict["EXT_SOURCE_1"], min_value=0., max_value=1., format="%.4f")
-            ext_source_2 = st.number_input("Credit score 2", value=features_dict["EXT_SOURCE_2"], min_value=0., max_value=1., format="%.4f")
-            ext_source_3 = st.number_input("Credit score 3", value=features_dict["EXT_SOURCE_3"], min_value=0., max_value=1., format="%.4f")
-            name_family_status = st.selectbox("Client's Family Status", name_family_status_options, index=features_dict["NAME_FAMILY_STATUS"])
-            st.space("small")
-            flag_own_car = st.checkbox("Client Owns a Car", features_dict["FLAG_OWN_CAR"])
-            st.space("xxsmall")
-            # Bloc vide - haut comme un bouton + label
-            st.space("xsmall")
-            st.space("medium")
-            days_id_publish = st.number_input("Age of Identity Document (in days)", value=features_dict["DAYS_ID_PUBLISH"], min_value=0, format="%.0d", step=365)
-            days_last_phone_change = st.number_input("Age of client's Phone (in days)", value=features_dict["DAYS_LAST_PHONE_CHANGE"], min_value=0, format="%.0d", step=365)
+# Formulaires d'entrée
+with tabs[0]:
+    with st.form("Application ID"):
+        sk_id_curr = st.number_input("Application ID", value=None, 
+                                    min_value=sk_id_curr_limits["min"], max_value=sk_id_curr_limits["max"],
+                                    format="%.0d", step=1)
+        if (sk_id_curr is not None):
+            sk_id_curr = int(sk_id_curr)
+        id_submitted = st.form_submit_button("Get application data")
+        id_submitted = id_submitted and (sk_id_curr is not None)
+        st.session_state.id_submitted = st.session_state.id_submitted or id_submitted
 
-    if data_submited:
-        data_ok=False
-        try :
-            predict_body = {
-                "SK_ID_CURR": sanitize_int(sk_id_curr, "Application ID"),
-                "NAME_CONTRACT_TYPE": name_contract_type_dict[name_contract_type],
-                "CODE_GENDER": code_gender_dict[code_gender],
-                "FLAG_OWN_CAR": flag_own_car,
-                "AMT_INCOME_TOTAL": sanitize_float(amt_income_total, "Income"),
-                "AMT_CREDIT": sanitize_float(amt_credit, "Loan Credit Amount"),
-                "AMT_ANNUITY": sanitize_optionnal_float(amt_annuity, "Loan Annuity"),
-                "NAME_EDUCATION_TYPE": name_eduction_type_dict[name_eduction_type],
-                "NAME_FAMILY_STATUS": name_family_status_dict[name_family_status],
-                "DAYS_BIRTH": sanitize_int(days_birth, "Age (in days)"),
-                "DAYS_EMPLOYED": sanitize_int(days_employed, "Duration of Current Job (in days)"),
-                "DAYS_ID_PUBLISH": sanitize_int(days_id_publish, "Age of Identity Document (in days)"),
-                "EXT_SOURCE_1": sanitize_optionnal_float(ext_source_1, "Credit score 1"),
-                "EXT_SOURCE_2": sanitize_optionnal_float(ext_source_2, "Credit score 2"),
-                "EXT_SOURCE_3": sanitize_optionnal_float(ext_source_3, "Credit score 3"),
-                "DAYS_LAST_PHONE_CHANGE": sanitize_int(days_last_phone_change, "Age of client's Phone (in days)")
-            }
-            data_ok = True
-        except ValueError as e:
-            st.error(str(e))
-        if data_ok:
-            predict_response = get_prediction(predict_body)
-            prediction = predict_response.json()
-            prediction
+    if st.session_state.id_submitted:
+        get_app_data_response = get_application_data(sk_id_curr)
+        features_dict = get_app_data_response.json()
+        with st.form("Application data"):
+            data_submited = st.form_submit_button("Predict Default Risk")
+            col1, col2 = st.columns(2)
+            with col1:
+                name_contract_type = st.selectbox("Contract Type", name_contract_type_options, index=int(features_dict["NAME_CONTRACT_TYPE"]))
+                amt_credit = st.number_input("Loan Credit Amount", value=features_dict["AMT_CREDIT"], min_value=0., format="%.1d")
+                amt_annuity = st.number_input("Loan Annuity", value=features_dict["AMT_ANNUITY"], min_value=0., format="%.1d")
+                code_gender = st.selectbox("Gender", code_gender_options, index=features_dict["CODE_GENDER"])
+                name_eduction_type = st.selectbox("Level of Education", name_eduction_type_options, index=features_dict["NAME_EDUCATION_TYPE"])
+                amt_income_total = st.number_input("Income", value=features_dict["AMT_INCOME_TOTAL"], min_value=0., format="%.1d")
+                days_employed = st.number_input("Duration of Current Job (in days)", value=features_dict["DAYS_EMPLOYED"], format="%.0d", step=365)
+                days_birth = st.number_input("Age (in days)", value=features_dict["DAYS_BIRTH"], format="%.0d", min_value=1, step=365)
+            with col2:
+                ext_source_1 = st.number_input("Credit score 1", value=features_dict["EXT_SOURCE_1"], min_value=0., max_value=1., format="%.4f")
+                ext_source_2 = st.number_input("Credit score 2", value=features_dict["EXT_SOURCE_2"], min_value=0., max_value=1., format="%.4f")
+                ext_source_3 = st.number_input("Credit score 3", value=features_dict["EXT_SOURCE_3"], min_value=0., max_value=1., format="%.4f")
+                name_family_status = st.selectbox("Client's Family Status", name_family_status_options, index=features_dict["NAME_FAMILY_STATUS"])
+                st.space("small")
+                flag_own_car = st.checkbox("Client Owns a Car", features_dict["FLAG_OWN_CAR"])
+                st.space("xxsmall")
+                # Bloc vide - haut comme un bouton + label
+                st.space("xsmall")
+                st.space("medium")
+                days_id_publish = st.number_input("Age of Identity Document (in days)", value=features_dict["DAYS_ID_PUBLISH"], min_value=0, format="%.0d", step=365)
+                days_last_phone_change = st.number_input("Age of client's Phone (in days)", value=features_dict["DAYS_LAST_PHONE_CHANGE"], min_value=0, format="%.0d", step=365)
+
+        if data_submited:
+            data_ok=False
+            try :
+                sk_id_curr_safe = sanitize_int(sk_id_curr, "Application ID")
+                predict_body = {
+                    "SK_ID_CURR": sk_id_curr_safe,
+                    "NAME_CONTRACT_TYPE": name_contract_type_dict[name_contract_type],
+                    "CODE_GENDER": code_gender_dict[code_gender],
+                    "FLAG_OWN_CAR": flag_own_car,
+                    "AMT_INCOME_TOTAL": sanitize_float(amt_income_total, "Income"),
+                    "AMT_CREDIT": sanitize_float(amt_credit, "Loan Credit Amount"),
+                    "AMT_ANNUITY": sanitize_optionnal_float(amt_annuity, "Loan Annuity"),
+                    "NAME_EDUCATION_TYPE": name_eduction_type_dict[name_eduction_type],
+                    "NAME_FAMILY_STATUS": name_family_status_dict[name_family_status],
+                    "DAYS_BIRTH": sanitize_int(days_birth, "Age (in days)"),
+                    "DAYS_EMPLOYED": sanitize_int(days_employed, "Duration of Current Job (in days)"),
+                    "DAYS_ID_PUBLISH": sanitize_int(days_id_publish, "Age of Identity Document (in days)"),
+                    "EXT_SOURCE_1": sanitize_optionnal_float(ext_source_1, "Credit score 1"),
+                    "EXT_SOURCE_2": sanitize_optionnal_float(ext_source_2, "Credit score 2"),
+                    "EXT_SOURCE_3": sanitize_optionnal_float(ext_source_3, "Credit score 3"),
+                    "DAYS_LAST_PHONE_CHANGE": sanitize_int(days_last_phone_change, "Age of client's Phone (in days)")
+                }
+                data_ok = True
+            except ValueError as e:
+                st.error(str(e))
+            if data_ok:
+                predict_response = get_prediction(predict_body)
+                prediction = predict_response.json()
+                prediction["sk_id_curr"] = sk_id_curr_safe
+                st.session_state.prediction = prediction
+
+# Résultats
+with tabs[1]:
+    if st.session_state.prediction is None:
+        st.markdown("*no prediction yet*")
+    else:
+        prediction = st.session_state.prediction
+        st.markdown(f"*Prediction for application \\#{prediction["sk_id_curr"]}*")
+        decison_text = "❌Reject" if prediction["prediction"] else "✅Accept"
+        st.markdown("**Decision**: " + decison_text)
+        st.markdown(f"**Default risk**: {prediction["probability"]:.2%}")
