@@ -103,22 +103,29 @@ if st.session_state.id_submitted:
     features_dict = get_app_data_response.json()
     with st.form("Application data"):
         data_submited = st.form_submit_button("Predict Default Risk")
-
-        name_contract_type = st.selectbox("Contract Type", name_contract_type_options, index=int(features_dict["NAME_CONTRACT_TYPE"]))
-        amt_credit = st.number_input("Loan Credit Amount", value=features_dict["AMT_CREDIT"], min_value=0., format="%.1d")
-        amt_annuity = st.number_input("Loan Annuity", value=features_dict["AMT_ANNUITY"], min_value=0., format="%.1d")
-        ext_source_1 = st.number_input("Credit score 1", value=features_dict["EXT_SOURCE_1"], min_value=0., max_value=1., format="%.4f")
-        ext_source_2 = st.number_input("Credit score 2", value=features_dict["EXT_SOURCE_2"], min_value=0., max_value=1., format="%.4f")
-        ext_source_3 = st.number_input("Credit score 3", value=features_dict["EXT_SOURCE_3"], min_value=0., max_value=1., format="%.4f")
-        code_gender = st.selectbox("Gender", code_gender_options, index=features_dict["CODE_GENDER"])
-        name_family_status = st.selectbox("Client's Family Status", name_family_status_options, index=features_dict["NAME_FAMILY_STATUS"])
-        name_eduction_type = st.selectbox("Level of Education", name_eduction_type_options, index=features_dict["NAME_EDUCATION_TYPE"])
-        flag_own_car = st.checkbox("Client Owns a Car", features_dict["FLAG_OWN_CAR"])
-        amt_income_total = st.number_input("Income", value=features_dict["AMT_INCOME_TOTAL"], min_value=0., format="%.1d")
-        days_employed = st.number_input("Duration of Current Job (in days)", value=features_dict["DAYS_EMPLOYED"], format="%.0d", step=365)
-        days_birth = st.number_input("Age (in days)", value=features_dict["DAYS_BIRTH"], format="%.0d", min_value=1, step=365)
-        days_id_publish = st.number_input("Age of Identity Document (in days)", value=features_dict["DAYS_ID_PUBLISH"], min_value=0, format="%.0d", step=365)
-        days_last_phone_change = st.number_input("Age of client's Phone (in days)", value=features_dict["DAYS_LAST_PHONE_CHANGE"], min_value=0, format="%.0d", step=365)
+        col1, col2 = st.columns(2)
+        with col1:
+            name_contract_type = st.selectbox("Contract Type", name_contract_type_options, index=int(features_dict["NAME_CONTRACT_TYPE"]))
+            amt_credit = st.number_input("Loan Credit Amount", value=features_dict["AMT_CREDIT"], min_value=0., format="%.1d")
+            amt_annuity = st.number_input("Loan Annuity", value=features_dict["AMT_ANNUITY"], min_value=0., format="%.1d")
+            code_gender = st.selectbox("Gender", code_gender_options, index=features_dict["CODE_GENDER"])
+            name_eduction_type = st.selectbox("Level of Education", name_eduction_type_options, index=features_dict["NAME_EDUCATION_TYPE"])
+            amt_income_total = st.number_input("Income", value=features_dict["AMT_INCOME_TOTAL"], min_value=0., format="%.1d")
+            days_employed = st.number_input("Duration of Current Job (in days)", value=features_dict["DAYS_EMPLOYED"], format="%.0d", step=365)
+            days_birth = st.number_input("Age (in days)", value=features_dict["DAYS_BIRTH"], format="%.0d", min_value=1, step=365)
+        with col2:
+            ext_source_1 = st.number_input("Credit score 1", value=features_dict["EXT_SOURCE_1"], min_value=0., max_value=1., format="%.4f")
+            ext_source_2 = st.number_input("Credit score 2", value=features_dict["EXT_SOURCE_2"], min_value=0., max_value=1., format="%.4f")
+            ext_source_3 = st.number_input("Credit score 3", value=features_dict["EXT_SOURCE_3"], min_value=0., max_value=1., format="%.4f")
+            name_family_status = st.selectbox("Client's Family Status", name_family_status_options, index=features_dict["NAME_FAMILY_STATUS"])
+            st.space("small")
+            flag_own_car = st.checkbox("Client Owns a Car", features_dict["FLAG_OWN_CAR"])
+            st.space("xxsmall")
+            # Bloc vide - haut comme un bouton + label
+            st.space("xsmall")
+            st.space("medium")
+            days_id_publish = st.number_input("Age of Identity Document (in days)", value=features_dict["DAYS_ID_PUBLISH"], min_value=0, format="%.0d", step=365)
+            days_last_phone_change = st.number_input("Age of client's Phone (in days)", value=features_dict["DAYS_LAST_PHONE_CHANGE"], min_value=0, format="%.0d", step=365)
 
     if data_submited:
         data_ok=False
