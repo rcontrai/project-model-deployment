@@ -38,10 +38,22 @@ ENV APP_PORT=$APP_PORT
 # ------- Transfert des fichiers --------
 COPY ./data /app/data/
 COPY ./models /app/models/
+COPY ./.streamlit/config.toml /app/.streamlit/config.toml
 COPY ./src/* /app/
+COPY ./parallel-run-api-ui.sh /app/
 
-# ------ Lancement de l'API 
+# Si on veut seulement déployer une API sans UI, décommenter le bloc ci-dessous et commenter les blocs suivants
+# (Le paramètre de build --target n'est pas disponible sur Hugging Face)
+# # ------ Lancement de l'API 
+# EXPOSE $APP_PORT
+# # Cette forme permet de paramétrer la commande exécutée avec des variables d'environnement sans casser la transmission normale des signaux
+# SHELL ["/bin/sh", "-c"]
+# CMD exec uvicorn api:app_predict --host 0.0.0.0 --port $APP_PORT
+
+# ------ Paramétrage de Streamlit
+RUN echo "port = $APP_PORT" >> .streamlit/config.toml
+
+# ------ Lancement de l'API et de l'UI en parallèle
 EXPOSE $APP_PORT
-# Cette forme permet de paramétrer la commande exécutée avec des variables d'environnement sans casser la transmission normale des signaux
-SHELL ["/bin/sh", "-c"]
-CMD exec uvicorn api:app_predict --host 0.0.0.0 --port $APP_PORT
+SHELL ["/bin/bash", "-c"]
+CMD . ./parallel-run-api-ui.sh

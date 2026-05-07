@@ -1,0 +1,5 @@
+[browser]
+gatherUsageStats = false
+
+# Doit être en dernier pour permettre au dockerfile d'ajouter une ligne concernant le port
+[server]
