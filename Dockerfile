@@ -41,6 +41,7 @@ COPY ./models /app/models/
 COPY ./.streamlit/config.toml /app/.streamlit/config.toml
 COPY ./src/* /app/
 COPY ./parallel-run-api-ui.sh /app/
+COPY ./ui_assets/* /app/ui_assets/
 
 # Si on veut seulement déployer une API sans UI, décommenter le bloc ci-dessous et commenter les blocs suivants
 # (Le paramètre de build --target n'est pas disponible sur Hugging Face)

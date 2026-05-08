@@ -1,8 +1,13 @@
 import streamlit as st
 import httpx
+import numpy as np
+from matplotlib import pyplot as plt
+import os
+import pickle
 
 # Configuration générale
 API_URL = "http://localhost:8000"
+ASSETS_DIR = "./ui_assets/"
 
 # Fonctions d'appel à l'API
 @st.cache_data
@@ -33,6 +38,20 @@ def get_prediction(predict_body:dict):
         response = client.post(API_URL + "/predict", json=predict_body)
         response.raise_for_status()
         return response
+
+# Fonctions de chargement de ressources
+@st.cache_data
+def load_percentiles()->tuple[np.ndarray, np.ndarray]:
+    data = np.load(os.path.join(ASSETS_DIR, "percentiles.npz"))
+    percentiles_neg = data["percentiles_neg"]
+    percentiles_pos = data["percentiles_pos"]
+    return percentiles_neg, percentiles_pos
+
+@st.cache_data
+def load_figure(filename:str):
+    with open(os.path.join(ASSETS_DIR, filename), 'rb') as f:
+        figure = pickle.load(f)
+    return figure
 
 # Paramètres des entrées
 # Copié-collé des dictionnaires définis dans src.feature_engineering_small.shrink_app
@@ -85,6 +104,20 @@ def sanitize_optionnal_float(value, name:str):
     except TypeError as e:
         raise ValueError(f"Could not convert value {value} of {name} into a float:\n\"{e}\"")
 
+def generate_percentile_text(score:float, percentiles:np.ndarray, group_name:str, comparative:str)->str:
+    if comparative == "lower":
+        n_quantiles = np.sum(score >= percentiles)
+    elif comparative == "higher":
+        n_quantiles = np.sum(score <= percentiles)
+    if n_quantiles == 0:
+        proportion_block = "0%"
+    elif n_quantiles == 1:
+        proportion_block = "Under 1%"
+    else:
+        proportion = (n_quantiles - 1) / 100
+        proportion_block = f"{proportion:.0%}"
+    # return f"{proportion_block} of {group_name} get a risk score {comparative} {score:.1%}"
+    return f"{proportion_block} of {group_name} get a {comparative} risk score"
 
 # Contenu de la page
 
@@ -179,8 +212,34 @@ with tabs[1]:
         prediction = st.session_state.prediction
         decison_text = "❌Reject" if prediction["prediction"] else "✅Accept"
         threshold = get_decision_threshold().json()["threshold"]
+        score = prediction["probability"]
         st.markdown(f"*Prediction for application \\#{prediction["sk_id_curr"]}*")
         st.markdown("**Decision**: " + decison_text)
-        st.markdown(f"**Risk score**: {prediction["probability"]:.1%}" +
+        st.markdown(f"**Risk score**: {score:.1%}" +
                     f"\\\n:small[*decision threshold: {threshold:.1%}*]")
-
+        percentiles_neg, percentiles_pos = load_percentiles()
+        col1, col2 = st.columns(2)
+        with col1:
+            fig = load_figure("figure_noissue_distrib.pickle")
+            plt.figure(fig)
+            plt.xlabel("Risk score")
+            plt.title("Distribution of risk scores for clients with no issues")
+            plt.axvline(threshold, linestyle="--", c="gray", zorder=0, label="threshold")
+            plt.axvline(score, linestyle="--", c="blue", zorder=2, label="predicted score")
+            plt.legend()
+            fig = plt.gcf()
+            st.pyplot(fig)
+            percentile_text = generate_percentile_text(score, percentiles_neg, "clients with no issues", "higher")
+            st.markdown(percentile_text)
+        with col2:
+            fig = load_figure("figure_default_distrib.pickle")
+            plt.figure(fig)
+            plt.xlabel("Risk score")
+            plt.title("Distribution of risk scores for clients who default")
+            plt.axvline(threshold, linestyle="--", c="gray", zorder=0, label="threshold")
+            plt.axvline(score, linestyle="--", c="blue", zorder=2, label="predicted score")
+            plt.legend()
+            fig = plt.gcf()
+            st.pyplot(fig, clear_figure=True)
+            percentile_text = generate_percentile_text(score, percentiles_pos, "clients who default", "lower")
+            st.markdown(percentile_text)
