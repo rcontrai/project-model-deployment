@@ -1,8 +1,8 @@
-.venv/
+**/.venv/
 .git/
 .github/
-.gitignore
-__pycache__/
-*.pyc
-.DS_Store
+**/.gitignore
+**/__pycache__/
+**/*.pyc
+**/.DS_Store
 *.env

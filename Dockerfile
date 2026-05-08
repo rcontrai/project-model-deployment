@@ -17,7 +17,7 @@ ENV UV_HTTP_TIMEOUT=1000
 COPY pyproject.toml uv.lock /app/
 # Installe les dépendances du projet en utilisant le lockfile et les paramètres, pour une vitesse maximale
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --locked --no-dev
+    uv sync --locked --no-dev --group ui
 
 # Activation de l'environnement virtuel
 ENV PATH="/app/.venv/bin:$PATH"
@@ -30,18 +30,31 @@ RUN apt-get install libgomp1
 
 
 # -------- Définition des variables d'environnement ---------
-ARG API_PORT
+ARG APP_PORT
 
-# pas utilisé par le programme 
-ENV API_PORT=$API_PORT 
+# Utilisé uniquement dans ce fichier 
+ENV APP_PORT=$APP_PORT 
 
 # ------- Transfert des fichiers --------
 COPY ./data /app/data/
 COPY ./models /app/models/
+COPY ./.streamlit/config.toml /app/.streamlit/config.toml
 COPY ./src/* /app/
+COPY ./parallel-run-api-ui.sh /app/
+COPY ./ui_assets/* /app/ui_assets/
 
-# ------ Lancement de l'API 
-EXPOSE $API_PORT
-# Cette forme permet de paramétrer la commande exécutée avec des variables d'environnement sans casser la transmission normale des signaux
-SHELL ["/bin/sh", "-c"]
-CMD exec uvicorn app:app_predict --host 0.0.0.0 --port $API_PORT
+# Si on veut seulement déployer une API sans UI, décommenter le bloc ci-dessous et commenter les blocs suivants
+# (Le paramètre de build --target n'est pas disponible sur Hugging Face)
+# # ------ Lancement de l'API 
+# EXPOSE $APP_PORT
+# # Cette forme permet de paramétrer la commande exécutée avec des variables d'environnement sans casser la transmission normale des signaux
+# SHELL ["/bin/sh", "-c"]
+# CMD exec uvicorn api:app_predict --host 0.0.0.0 --port $APP_PORT
+
+# ------ Paramétrage de Streamlit
+RUN echo "port = $APP_PORT" >> .streamlit/config.toml
+
+# ------ Lancement de l'API et de l'UI en parallèle
+EXPOSE $APP_PORT
+SHELL ["/bin/bash", "-c"]
+CMD . ./parallel-run-api-ui.sh

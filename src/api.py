@@ -99,6 +99,8 @@ API de prédiction du risque de retard de paiement
 Cette API fournit des prédictions du risque qu'un demandeur de prêt se retrouve en retard de paiement.
 
 **Types de requêtes disponibles**
+ - */get_application_id_limits* : renvoie l'intervalle des valeurs permises en entrée de */get_application_data*
+ - *get_decision_threshold* : renvoie la valeur du seuil de décision du modèle
  - */get_application_data* : à partir de l'ID d'une demande, récupère dans la base de donnée les 
  informations sur la demande pertinentes pour effectuer une prédiction.
  - */predict* : prédiction du risque par un modèle de machine learning, sous la forme d'une décision
@@ -118,11 +120,27 @@ def root():
         "message" : "Application basique de prédiction de probabilité de retard de paiement",
         "status" : "running",
         "available_endpoints": {
+            "get allowed inputs for get data": "/get_application_id_limits",
+            "get decsion threshold": "/get_decision_threshold",
             "get data": "/get_application_data",
-            "prédiction": "/predict",
+            "prediction": "/predict",
             "docs": "/docs",
         },
     }
+
+@app_predict.get("/get_application_id_limits")
+def get_application_id_limits():
+    """
+    Renvoie les valeurs minimales et maximales permises pour le paramètre sk_id_curr de get_application_data
+    """
+    return {"min":min_sk_id.item(), "max":max_sk_id.item()}
+
+@app_predict.get("/get_decision_threshold")
+def get_decision_threshold():
+    """
+    Renvoie la valeur du seuil de décision du modèle
+    """
+    return {"threshold":threshold}
 
 @app_predict.post("/get_application_data")
 def get_application_data(input_data:App_ID):
@@ -132,7 +150,7 @@ def get_application_data(input_data:App_ID):
     """
     features = applications[applications["SK_ID_CURR"] == input_data.sk_id_curr]
     if features.shape[0] == 0:
-        raise HTTPException(500, f"Provided ID ({input_data.sk_id_curr}) not in internal database")
+        raise HTTPException(404, f"Provided ID ({input_data.sk_id_curr}) not in internal database")
     features_dict = features.loc[features.index[0]].to_dict()
     features_dict = clean_up_nans(features_dict)
     return features_dict
