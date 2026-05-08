@@ -13,6 +13,13 @@ def get_application_id_limits():
         return response
 
 @st.cache_data
+def get_decision_threshold():
+    with httpx.Client() as client:
+        response = client.get(API_URL + "/get_decision_threshold")
+        response.raise_for_status()
+        return response
+
+@st.cache_data
 def get_application_data(sk_id_curr:int):
     with httpx.Client() as client:
         response = client.post(API_URL + "/get_application_data",
@@ -170,7 +177,10 @@ with tabs[1]:
         st.markdown("*no prediction yet*")
     else:
         prediction = st.session_state.prediction
-        st.markdown(f"*Prediction for application \\#{prediction["sk_id_curr"]}*")
         decison_text = "❌Reject" if prediction["prediction"] else "✅Accept"
+        threshold = get_decision_threshold().json()["threshold"]
+        st.markdown(f"*Prediction for application \\#{prediction["sk_id_curr"]}*")
         st.markdown("**Decision**: " + decison_text)
-        st.markdown(f"**Default risk**: {prediction["probability"]:.2%}")
+        st.markdown(f"**Risk score**: {prediction["probability"]:.1%}" +
+                    f"\\\n:small[*decision threshold: {threshold:.1%}*]")
+
