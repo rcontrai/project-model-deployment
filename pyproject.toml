@@ -15,5 +15,13 @@ dependencies = [
     "lightgbm==4.6.0",
     "fastapi[standard]==0.136.0",
     "uvicorn==0.45.0",
-    "pytest==9.0.3"
+    "pytest==9.0.3",
+    "httpx==0.28.1",
+]
+
+
+[dependency-groups]
+ui = [
+    "matplotlib==3.10.8",
+    "streamlit==1.57.0",
 ]

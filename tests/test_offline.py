@@ -3,7 +3,7 @@
 import math
 import pandas as pd
 import numpy as np
-from src.app import threshold, pipeline, applications, model_prediction
+from src.api import threshold, pipeline, applications, model_prediction
 
 
 # Tests sur threshold 
