@@ -136,7 +136,7 @@ def get_application_id_limits():
     return {"min":min_sk_id.item(), "max":max_sk_id.item()}
 
 @app_predict.get("/get_decision_threshold")
-def get_application_id_limits():
+def get_decision_threshold():
     """
     Renvoie la valeur du seuil de décision du modèle
     """
