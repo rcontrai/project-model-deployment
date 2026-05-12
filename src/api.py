@@ -1,6 +1,6 @@
 # Pour l'API
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from sqlmodel import SQLModel, Field
 from typing import Optional
 # Pour le modèle
 from sklearn.pipeline import Pipeline
@@ -60,17 +60,14 @@ def model_prediction(pipeline:Pipeline, threshold:float, features:pd.DataFrame)-
     pred = bool(pred)
     return pred, proba
 
-
-# API
-
-# Entrées 
+# Entrées et sorties
 min_sk_id = applications["SK_ID_CURR"].min()
 max_sk_id = applications["SK_ID_CURR"].max()
-class App_ID(BaseModel):
+class App_ID(SQLModel):
     """Entrée limitée à l'ID de la demande"""
     sk_id_curr : int = Field(ge=min_sk_id, le=max_sk_id, description="ID de la demande à traiter")
 
-class Application_data(BaseModel):
+class Application_data(SQLModel):
     """
     Informations concernant la demande à traiter 
     """
@@ -90,6 +87,13 @@ class Application_data(BaseModel):
     EXT_SOURCE_2:Optional[float] = Field(ge=0, le=1, description="Normalized score from external data source (normalized)")
     EXT_SOURCE_3:Optional[float] = Field(ge=0, le=1, description="Normalized score from external data source (normalized)")
     DAYS_LAST_PHONE_CHANGE:int = Field(ge=0, description="How many days before application did client change phone")
+
+class Prediction_result(SQLModel):
+    prediction : bool = Field(description="Rejection decision")
+    probability : float = Field(description="Risk of default")
+
+
+# API
 
 app_predict = FastAPI(
     title="API de prédiction du risque de retard de paiement",
@@ -143,7 +147,7 @@ def get_decision_threshold():
     return {"threshold":threshold}
 
 @app_predict.post("/get_application_data")
-def get_application_data(input_data:App_ID):
+def get_application_data(input_data:App_ID)->Application_data:
     """
     À partir de l'ID d'une demande, récupère dans la base de donnée les informations sur la demande
     pertinentes pour effectuer une prédiction
@@ -156,7 +160,7 @@ def get_application_data(input_data:App_ID):
     return features_dict
 
 @app_predict.post("/predict")
-def predict_default_risk(input_data:Application_data):
+def predict_default_risk(input_data:Application_data)->Prediction_result:
     """
     Prédiction du risque par un modèle de machine learning, sous la forme d'une décision de rejet
     (true=demande à rejeter) et d'une probabilité de retard de paiement (proche de 1=risque élevé)
