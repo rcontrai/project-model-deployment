@@ -1,6 +1,6 @@
 # Pour l'API
 from fastapi import FastAPI, HTTPException
-from sqlmodel import SQLModel, Field
+from sqlmodel import SQLModel, Field, create_engine, Session 
 from typing import Optional
 # Pour le modèle
 from sklearn.pipeline import Pipeline
@@ -11,6 +11,8 @@ import pickle
 import json
 import os
 from math import isnan
+import functools
+from time import time, perf_counter
 
 # Variables d'environnement
 # PLACEHOLDER_ENV_VAR = os.getenv("PLACEHOLDER_ENV_VAR")
@@ -20,6 +22,7 @@ MODEL_NAME = "LGBMClassifier-reduced_features"
 MODEL_VERSION = "10"
 DATADIR = os.path.abspath("./data")
 GENERATED_DIR = os.path.abspath("./generated") # pas vraiment utilisé par le code
+LOGS_PATH = "logs/logs.db"
 
 # L'ensemble des demandes enregistrées
 def load_data()->pd.DataFrame:
@@ -92,6 +95,69 @@ class Prediction_result(SQLModel):
     prediction : bool = Field(description="Rejection decision")
     probability : float = Field(description="Risk of default")
 
+# Logging
+class Main_log(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time: float
+    endpoint: str
+    run_time: float
+
+class App_ID_table(App_ID, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time:float
+
+class Application_data_table(Application_data, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time:float
+
+class Prediction_result_table(Prediction_result, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time:float
+
+
+connect_args = {"check_same_thread": False}
+logging_engine = create_engine(f"sqlite:///{LOGS_PATH}", connect_args=connect_args)
+SQLModel.metadata.create_all(logging_engine)
+
+def log_call_info(endpoint:str=None):
+    """
+    Décorateur chargé de logger les appels à l'API et les informations pertinentes dessus
+
+    Arguments:
+        - endpoint (optionnel) : nom d'un endpoint avec des entrées ou des sorties à logger
+    """
+    def _log_call_info(function):
+        @functools.wraps(function)
+        def inner(*args, **kwargs):
+            call_time = time()
+            endpoint_name = function.__name__
+            # Mesure du temps d'exécution        
+            before = perf_counter()
+            results = function(*args, **kwargs)
+            after = perf_counter()
+            run_time = after - before
+            # Logging spécifique à certains endpoints
+            log_inputs, log_outputs = False, False
+            if endpoint == "get_application_data":
+                log_inputs = True
+                inputs = App_ID_table(**kwargs["input_data"].model_dump(), call_time=call_time)
+            if endpoint == "predict":
+                log_inputs, log_outputs = True, True
+                inputs = Application_data_table(**kwargs["input_data"].model_dump(), call_time=call_time)
+                outputs = Prediction_result_table(**results, call_time=call_time)
+            # Logging des informations
+            main_log = Main_log(call_time=call_time, endpoint=endpoint_name, run_time=run_time)
+            with Session(logging_engine) as session:
+                session.add(main_log)
+                if log_inputs:
+                    session.add(inputs)
+                if log_outputs:
+                    session.add(outputs)
+                session.commit()
+            return results
+        return inner
+    return _log_call_info
+
 
 # API
 
@@ -118,6 +184,7 @@ L'intérêt d'effectuer la prédiction en deux temps est de permettre à l'utili
 )
 
 @app_predict.get("/")
+@log_call_info()
 def root():
     """informations de base"""
     return {
@@ -133,6 +200,7 @@ def root():
     }
 
 @app_predict.get("/get_application_id_limits")
+@log_call_info()
 def get_application_id_limits():
     """
     Renvoie les valeurs minimales et maximales permises pour le paramètre sk_id_curr de get_application_data
@@ -140,6 +208,7 @@ def get_application_id_limits():
     return {"min":min_sk_id.item(), "max":max_sk_id.item()}
 
 @app_predict.get("/get_decision_threshold")
+@log_call_info()
 def get_decision_threshold():
     """
     Renvoie la valeur du seuil de décision du modèle
@@ -147,6 +216,7 @@ def get_decision_threshold():
     return {"threshold":threshold}
 
 @app_predict.post("/get_application_data")
+@log_call_info("get_application_data")
 def get_application_data(input_data:App_ID)->Application_data:
     """
     À partir de l'ID d'une demande, récupère dans la base de donnée les informations sur la demande
@@ -160,6 +230,7 @@ def get_application_data(input_data:App_ID)->Application_data:
     return features_dict
 
 @app_predict.post("/predict")
+@log_call_info("predict")
 def predict_default_risk(input_data:Application_data)->Prediction_result:
     """
     Prédiction du risque par un modèle de machine learning, sous la forme d'une décision de rejet
