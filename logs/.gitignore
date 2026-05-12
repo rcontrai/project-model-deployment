@@ -1,0 +1,5 @@
+# Le code a besoin que ce dossier existe pour y écrire ses logs, mais son contenu n'a pas à aller sur le dépôt
+# Ce dossier existe sur le dépôt uniquement pour les tests en local
+# Le Dockerfile devrait créer le dossier logs/ en partant du principe qu'il est vide
+*
+!.gitignore
