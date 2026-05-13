@@ -29,8 +29,13 @@ if (HF_BUCKET_TOKEN is None) and (os.path.exists("./secret_HF_BUCKET_TOKEN")):
     with open("./secret_HF_BUCKET_TOKEN") as f:
         HF_BUCKET_TOKEN = f.read()
 # Période de sychronisation des logs
-LOGGING_PERIOD = os.getenv("LOGGING_PERIOD", str(6*3600)) #par défaut 4 fois par jour
-LOGGING_PERIOD = float(LOGGING_PERIOD)
+default_period = 6 * 3600.
+LOGGING_PERIOD = os.getenv("LOGGING_PERIOD", str(default_period))
+try: 
+    LOGGING_PERIOD = float(LOGGING_PERIOD)
+except ValueError:
+    print(f"Defaulting to {default_period}  intead of '{LOGGING_PERIOD}' for LOGGING_PERIOD")
+    LOGGING_PERIOD = default_period #par défaut 4 fois par jour
 
 # Autres configurations
 MODEL_NAME = "LGBMClassifier-reduced_features"
