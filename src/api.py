@@ -116,23 +116,28 @@ class Prediction_result(SQLModel):
     probability : float = Field(description="Risk of default")
 
 # Logging
+log_tables:list[SQLModel] = []
 class Main_log(SQLModel, table=True):
     id: int | None = Field(default=None, primary_key=True)
     call_time: float
     endpoint: str
     run_time: float
+log_tables.append(Main_log)
 
 class App_ID_table(App_ID, table=True):
     id: int | None = Field(default=None, primary_key=True)
     call_time:float
+log_tables.append(App_ID_table)
 
 class Application_data_table(Application_data, table=True):
     id: int | None = Field(default=None, primary_key=True)
     call_time:float
+log_tables.append(Application_data_table)
 
 class Prediction_result_table(Prediction_result, table=True):
     id: int | None = Field(default=None, primary_key=True)
     call_time:float
+log_tables.append(Prediction_result_table)
 
 
 connect_args = {"check_same_thread": False}
@@ -191,11 +196,8 @@ def copy_logs_to_permanent_storage():
         shutil.copy(LOGS_PATH, copy_target)
         # Suppression des logs d'origine
         with Session(logging_engine) as session:
-            statements = [delete(Main_log),
-                        delete(App_ID_table),
-                        delete(Application_data_table),
-                        delete(Prediction_result_table)]
-            for statement in statements:
+            for table in log_tables:
+                statement = delete(table)
                 session.exec(statement)
             session.commit()
         # Upload des logs dans le bucket (si disponible)
