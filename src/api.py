@@ -16,6 +16,7 @@ import functools
 from time import time, perf_counter
 import shutil
 import huggingface_hub
+from fastapi_utils.tasks import repeat_every
 
 # Variables d'environnement
 # Bucket qui centralise les logs et le token pour y accéder
@@ -27,6 +28,9 @@ HF_BUCKET_TOKEN = os.getenv("HF_BUCKET_TOKEN")
 if (HF_BUCKET_TOKEN is None) and (os.path.exists("./secret_HF_BUCKET_TOKEN")):
     with open("./secret_HF_BUCKET_TOKEN") as f:
         HF_BUCKET_TOKEN = f.read()
+# Période de sychronisation des logs
+LOGGING_PERIOD = os.getenv("LOGGING_PERIOD", str(6*3600)) #par défaut 4 fois par jour
+LOGGING_PERIOD = float(LOGGING_PERIOD)
 
 # Autres configurations
 MODEL_NAME = "LGBMClassifier-reduced_features"
@@ -172,26 +176,35 @@ def log_call_info(endpoint:str=None):
     return _log_call_info
 
 def copy_logs_to_permanent_storage():
-    # Copie des logs dans un nouveau fichier
-    copy_time = time()
-    copy_target = f"logs/log_{str(copy_time)}.db"
-    shutil.copy(LOGS_PATH, copy_target)
-    # Suppression des logs d'origine
+    # Vérifie que de nouveaux logs ont été créés
     with Session(logging_engine) as session:
-        statements = [delete(Main_log),
-                      delete(App_ID_table),
-                      delete(Application_data_table),
-                      delete(Prediction_result_table)]
-        for statement in statements:
-            session.exec(statement)
-        session.commit()
-    # Upload des logs dans le bucket (si disponible)
-    if HF_BUCKET_TOKEN is not None:
-        huggingface_hub.batch_bucket_files(
-            HF_BUCKET_URL,
-            add=[(copy_target, copy_target)]
-        )
-    
+        is_empty = (session.get(Main_log, 1) is None)
+    if not is_empty:
+        # Copie des logs dans un nouveau fichier
+        copy_time = time()
+        copy_target = f"logs/log_{str(copy_time)}.db"
+        shutil.copy(LOGS_PATH, copy_target)
+        # Suppression des logs d'origine
+        with Session(logging_engine) as session:
+            statements = [delete(Main_log),
+                        delete(App_ID_table),
+                        delete(Application_data_table),
+                        delete(Prediction_result_table)]
+            for statement in statements:
+                session.exec(statement)
+            session.commit()
+        # Upload des logs dans le bucket (si disponible)
+        if HF_BUCKET_TOKEN is not None:
+            huggingface_hub.batch_bucket_files(
+                HF_BUCKET_URL,
+                add=[(copy_target, copy_target)]
+            )
+    else:
+        print("Log sync aborted because there is nothing to sync")
+
+@repeat_every(seconds=LOGGING_PERIOD, wait_first=LOGGING_PERIOD, raise_exceptions=True)
+def periodic_log_sync():
+    copy_logs_to_permanent_storage()
 
 # API
 
@@ -199,7 +212,7 @@ def copy_logs_to_permanent_storage():
 async def lifespan(app:FastAPI):
     """Gestion des actions à effectuer au démarrage et à l'arrêt de l'application"""
     # Au démarrage
-    pass
+    await periodic_log_sync()
     yield
     # À l'arrêt
     copy_logs_to_permanent_storage()

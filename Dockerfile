@@ -32,11 +32,13 @@ RUN apt-get install libgomp1
 # -------- Définition des variables d'environnement ---------
 ARG APP_PORT
 ARG HF_BUCKET_URL
+ARG LOGGING_PERIOD
 
 # Utilisé uniquement dans ce fichier 
 ENV APP_PORT=$APP_PORT
 # Utilisé par api.py
 ENV HF_BUCKET_URL=$HF_BUCKET_URL
+ENV LOGGING_PERIOD=$LOGGING_PERIOD
 
 # # Secrets
 RUN --mount=type=secret,id=HF_BUCKET_TOKEN,mode=0444,required=false \

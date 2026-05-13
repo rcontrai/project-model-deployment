@@ -4,5 +4,5 @@
 
 # # Image qui contient l'UI
 docker build -f Dockerfile -t dockerized_model_ui --build-arg APP_PORT="$APP_PORT" .
-# Build qui active le logging
-# docker build -f Dockerfile -t dockerized_model_ui --build-arg APP_PORT="$APP_PORT" --build-arg HF_BUCKET_URL="$HF_BUCKET_URL" --secret type=env,id=HF_BUCKET_TOKEN,env=HF_BUCKET_TOKEN .
+# Build pour tester le logging
+# docker build -f Dockerfile -t dockerized_model_ui --build-arg APP_PORT="$APP_PORT" --build-arg LOGGING_PERIOD="$LOGGING_PERIOD" --build-arg HF_BUCKET_URL="$HF_BUCKET_URL" --secret type=env,id=HF_BUCKET_TOKEN,env=HF_BUCKET_TOKEN .
