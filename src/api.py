@@ -21,6 +21,12 @@ import huggingface_hub
 # Bucket qui centralise les logs et le token pour y accéder
 HF_BUCKET_URL = os.getenv("HF_BUCKET_URL")
 HF_BUCKET_TOKEN = os.getenv("HF_BUCKET_TOKEN")
+# Lecture depuis un fichier crée pendant le build de l'image
+# parce que les secrets dans Docker n'existent que pendant le build
+# (sauf sur hugging_face apparemment)
+if (HF_BUCKET_TOKEN is None) and (os.path.exists("./secret_HF_BUCKET_TOKEN")):
+    with open("./secret_HF_BUCKET_TOKEN") as f:
+        HF_BUCKET_TOKEN = f.read()
 
 # Autres configurations
 MODEL_NAME = "LGBMClassifier-reduced_features"
@@ -198,7 +204,10 @@ async def lifespan(app:FastAPI):
     # À l'arrêt
     copy_logs_to_permanent_storage()
     if HF_BUCKET_TOKEN is not None:
-        huggingface_hub.logout(HF_BUCKET_TOKEN)
+        try:
+            huggingface_hub.logout()
+        except FileNotFoundError as e:
+            print("Error logging out from huggingface_hub", e)
 
 app_predict = FastAPI(
     lifespan=lifespan,
