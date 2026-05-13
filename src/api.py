@@ -1,7 +1,8 @@
 # Pour l'API
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel, Field
+from sqlmodel import SQLModel, Field, create_engine, Session, delete
 from typing import Optional
+from contextlib import asynccontextmanager
 # Pour le modèle
 from sklearn.pipeline import Pipeline
 from data_caching import Caching_processor
@@ -11,15 +12,37 @@ import pickle
 import json
 import os
 from math import isnan
+import functools
+from time import time, perf_counter
+import shutil
+import huggingface_hub
+from fastapi_utils.tasks import repeat_every
 
 # Variables d'environnement
-# PLACEHOLDER_ENV_VAR = os.getenv("PLACEHOLDER_ENV_VAR")
+# Bucket qui centralise les logs et le token pour y accéder
+HF_BUCKET_URL = os.getenv("HF_BUCKET_URL")
+HF_BUCKET_TOKEN = os.getenv("HF_BUCKET_TOKEN")
+# Lecture depuis un fichier crée pendant le build de l'image
+# parce que les secrets dans Docker n'existent que pendant le build
+# (sauf sur hugging_face apparemment)
+if (HF_BUCKET_TOKEN is None) and (os.path.exists("./secret_HF_BUCKET_TOKEN")):
+    with open("./secret_HF_BUCKET_TOKEN") as f:
+        HF_BUCKET_TOKEN = f.read()
+# Période de sychronisation des logs
+default_period = 6 * 3600.
+LOGGING_PERIOD = os.getenv("LOGGING_PERIOD", str(default_period))
+try: 
+    LOGGING_PERIOD = float(LOGGING_PERIOD)
+except ValueError:
+    print(f"Defaulting to {default_period}  intead of '{LOGGING_PERIOD}' for LOGGING_PERIOD")
+    LOGGING_PERIOD = default_period #par défaut 4 fois par jour
 
 # Autres configurations
 MODEL_NAME = "LGBMClassifier-reduced_features"
 MODEL_VERSION = "10"
 DATADIR = os.path.abspath("./data")
 GENERATED_DIR = os.path.abspath("./generated") # pas vraiment utilisé par le code
+LOGS_PATH = "logs/logs.db"
 
 # L'ensemble des demandes enregistrées
 def load_data()->pd.DataFrame:
@@ -60,17 +83,14 @@ def model_prediction(pipeline:Pipeline, threshold:float, features:pd.DataFrame)-
     pred = bool(pred)
     return pred, proba
 
-
-# API
-
-# Entrées 
+# Entrées et sorties
 min_sk_id = applications["SK_ID_CURR"].min()
 max_sk_id = applications["SK_ID_CURR"].max()
-class App_ID(BaseModel):
+class App_ID(SQLModel):
     """Entrée limitée à l'ID de la demande"""
     sk_id_curr : int = Field(ge=min_sk_id, le=max_sk_id, description="ID de la demande à traiter")
 
-class Application_data(BaseModel):
+class Application_data(SQLModel):
     """
     Informations concernant la demande à traiter 
     """
@@ -91,7 +111,126 @@ class Application_data(BaseModel):
     EXT_SOURCE_3:Optional[float] = Field(ge=0, le=1, description="Normalized score from external data source (normalized)")
     DAYS_LAST_PHONE_CHANGE:int = Field(ge=0, description="How many days before application did client change phone")
 
+class Prediction_result(SQLModel):
+    prediction : bool = Field(description="Rejection decision")
+    probability : float = Field(description="Risk of default")
+
+# Logging
+log_tables:list[SQLModel] = []
+class Main_log(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time: float
+    endpoint: str
+    run_time: float
+log_tables.append(Main_log)
+
+class App_ID_table(App_ID, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time:float
+log_tables.append(App_ID_table)
+
+class Application_data_table(Application_data, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time:float
+log_tables.append(Application_data_table)
+
+class Prediction_result_table(Prediction_result, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    call_time:float
+log_tables.append(Prediction_result_table)
+
+
+connect_args = {"check_same_thread": False}
+logging_engine = create_engine(f"sqlite:///{LOGS_PATH}", connect_args=connect_args)
+SQLModel.metadata.create_all(logging_engine)
+if HF_BUCKET_TOKEN is not None:
+    huggingface_hub.login(HF_BUCKET_TOKEN)
+
+def log_call_info(endpoint:str=None):
+    """
+    Décorateur chargé de logger les appels à l'API et les informations pertinentes dessus
+
+    Arguments:
+        - endpoint (optionnel) : nom d'un endpoint avec des entrées ou des sorties à logger
+    """
+    def _log_call_info(function):
+        @functools.wraps(function)
+        def inner(*args, **kwargs):
+            call_time = time()
+            endpoint_name = function.__name__
+            # Mesure du temps d'exécution        
+            before = perf_counter()
+            results = function(*args, **kwargs)
+            after = perf_counter()
+            run_time = after - before
+            # Logging spécifique à certains endpoints
+            log_inputs, log_outputs = False, False
+            if endpoint == "get_application_data":
+                log_inputs = True
+                inputs = App_ID_table(**kwargs["input_data"].model_dump(), call_time=call_time)
+            if endpoint == "predict":
+                log_inputs, log_outputs = True, True
+                inputs = Application_data_table(**kwargs["input_data"].model_dump(), call_time=call_time)
+                outputs = Prediction_result_table(**results, call_time=call_time)
+            # Logging des informations
+            main_log = Main_log(call_time=call_time, endpoint=endpoint_name, run_time=run_time)
+            with Session(logging_engine) as session:
+                session.add(main_log)
+                if log_inputs:
+                    session.add(inputs)
+                if log_outputs:
+                    session.add(outputs)
+                session.commit()
+            return results
+        return inner
+    return _log_call_info
+
+def copy_logs_to_permanent_storage():
+    # Vérifie que de nouveaux logs ont été créés
+    with Session(logging_engine) as session:
+        is_empty = (session.get(Main_log, 1) is None)
+    if not is_empty:
+        # Copie des logs dans un nouveau fichier
+        copy_time = time()
+        copy_target = f"logs/log_{str(copy_time)}.db"
+        shutil.copy(LOGS_PATH, copy_target)
+        # Suppression des logs d'origine
+        with Session(logging_engine) as session:
+            for table in log_tables:
+                statement = delete(table)
+                session.exec(statement)
+            session.commit()
+        # Upload des logs dans le bucket (si disponible)
+        if HF_BUCKET_TOKEN is not None:
+            huggingface_hub.batch_bucket_files(
+                HF_BUCKET_URL,
+                add=[(copy_target, copy_target)]
+            )
+    else:
+        print("Log sync aborted because there is nothing to sync")
+
+@repeat_every(seconds=LOGGING_PERIOD, wait_first=LOGGING_PERIOD, raise_exceptions=True)
+def periodic_log_sync():
+    copy_logs_to_permanent_storage()
+
+# API
+
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    """Gestion des actions à effectuer au démarrage et à l'arrêt de l'application"""
+    # Au démarrage
+    await periodic_log_sync()
+    yield
+    # À l'arrêt
+    copy_logs_to_permanent_storage()
+    if HF_BUCKET_TOKEN is not None:
+        try:
+            huggingface_hub.logout()
+        except FileNotFoundError as e:
+            print("Error logging out from huggingface_hub", e)
+
 app_predict = FastAPI(
+    lifespan=lifespan,
     title="API de prédiction du risque de retard de paiement",
     description="""
 API de prédiction du risque de retard de paiement
@@ -114,6 +253,7 @@ L'intérêt d'effectuer la prédiction en deux temps est de permettre à l'utili
 )
 
 @app_predict.get("/")
+@log_call_info()
 def root():
     """informations de base"""
     return {
@@ -129,6 +269,7 @@ def root():
     }
 
 @app_predict.get("/get_application_id_limits")
+@log_call_info()
 def get_application_id_limits():
     """
     Renvoie les valeurs minimales et maximales permises pour le paramètre sk_id_curr de get_application_data
@@ -136,6 +277,7 @@ def get_application_id_limits():
     return {"min":min_sk_id.item(), "max":max_sk_id.item()}
 
 @app_predict.get("/get_decision_threshold")
+@log_call_info()
 def get_decision_threshold():
     """
     Renvoie la valeur du seuil de décision du modèle
@@ -143,7 +285,8 @@ def get_decision_threshold():
     return {"threshold":threshold}
 
 @app_predict.post("/get_application_data")
-def get_application_data(input_data:App_ID):
+@log_call_info("get_application_data")
+def get_application_data(input_data:App_ID)->Application_data:
     """
     À partir de l'ID d'une demande, récupère dans la base de donnée les informations sur la demande
     pertinentes pour effectuer une prédiction
@@ -156,7 +299,8 @@ def get_application_data(input_data:App_ID):
     return features_dict
 
 @app_predict.post("/predict")
-def predict_default_risk(input_data:Application_data):
+@log_call_info("predict")
+def predict_default_risk(input_data:Application_data)->Prediction_result:
     """
     Prédiction du risque par un modèle de machine learning, sous la forme d'une décision de rejet
     (true=demande à rejeter) et d'une probabilité de retard de paiement (proche de 1=risque élevé)
