@@ -31,9 +31,18 @@ RUN apt-get install libgomp1
 
 # -------- Définition des variables d'environnement ---------
 ARG APP_PORT
+ARG HF_BUCKET_URL
+ARG LOGGING_PERIOD
 
 # Utilisé uniquement dans ce fichier 
-ENV APP_PORT=$APP_PORT 
+ENV APP_PORT=$APP_PORT
+# Utilisé par api.py
+ENV HF_BUCKET_URL=$HF_BUCKET_URL
+ENV LOGGING_PERIOD=$LOGGING_PERIOD
+
+# # Secrets
+RUN --mount=type=secret,id=HF_BUCKET_TOKEN,mode=0444,required=false \
+   if [ -f /run/secrets/HF_BUCKET_TOKEN ]; then (cat /run/secrets/HF_BUCKET_TOKEN > /app/secret_HF_BUCKET_TOKEN); fi
 
 # ------- Transfert des fichiers --------
 COPY ./data /app/data/
@@ -42,6 +51,7 @@ COPY ./.streamlit/config.toml /app/.streamlit/config.toml
 COPY ./src/* /app/
 COPY ./parallel-run-api-ui.sh /app/
 COPY ./ui_assets/* /app/ui_assets/
+RUN mkdir logs
 
 # Si on veut seulement déployer une API sans UI, décommenter le bloc ci-dessous et commenter les blocs suivants
 # (Le paramètre de build --target n'est pas disponible sur Hugging Face)
