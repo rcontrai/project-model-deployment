@@ -1,7 +1,8 @@
 # Pour l'API
 from fastapi import FastAPI, HTTPException
-from sqlmodel import SQLModel, Field, create_engine, Session 
+from sqlmodel import SQLModel, Field, create_engine, Session, delete
 from typing import Optional
+from contextlib import asynccontextmanager
 # Pour le modèle
 from sklearn.pipeline import Pipeline
 from data_caching import Caching_processor
@@ -13,9 +14,13 @@ import os
 from math import isnan
 import functools
 from time import time, perf_counter
+import shutil
+import huggingface_hub
 
 # Variables d'environnement
-# PLACEHOLDER_ENV_VAR = os.getenv("PLACEHOLDER_ENV_VAR")
+# Bucket qui centralise les logs et le token pour y accéder
+HF_BUCKET_URL = os.getenv("HF_BUCKET_URL")
+HF_BUCKET_TOKEN = os.getenv("HF_BUCKET_TOKEN")
 
 # Autres configurations
 MODEL_NAME = "LGBMClassifier-reduced_features"
@@ -118,6 +123,8 @@ class Prediction_result_table(Prediction_result, table=True):
 connect_args = {"check_same_thread": False}
 logging_engine = create_engine(f"sqlite:///{LOGS_PATH}", connect_args=connect_args)
 SQLModel.metadata.create_all(logging_engine)
+if HF_BUCKET_TOKEN is not None:
+    huggingface_hub.login(HF_BUCKET_TOKEN)
 
 def log_call_info(endpoint:str=None):
     """
@@ -158,10 +165,43 @@ def log_call_info(endpoint:str=None):
         return inner
     return _log_call_info
 
+def copy_logs_to_permanent_storage():
+    # Copie des logs dans un nouveau fichier
+    copy_time = time()
+    copy_target = f"logs/log_{str(copy_time)}.db"
+    shutil.copy(LOGS_PATH, copy_target)
+    # Suppression des logs d'origine
+    with Session(logging_engine) as session:
+        statements = [delete(Main_log),
+                      delete(App_ID_table),
+                      delete(Application_data_table),
+                      delete(Prediction_result_table)]
+        for statement in statements:
+            session.exec(statement)
+        session.commit()
+    # Upload des logs dans le bucket (si disponible)
+    if HF_BUCKET_TOKEN is not None:
+        huggingface_hub.batch_bucket_files(
+            HF_BUCKET_URL,
+            add=[(copy_target, copy_target)]
+        )
+    
 
 # API
 
+@asynccontextmanager
+async def lifespan(app:FastAPI):
+    """Gestion des actions à effectuer au démarrage et à l'arrêt de l'application"""
+    # Au démarrage
+    pass
+    yield
+    # À l'arrêt
+    copy_logs_to_permanent_storage()
+    if HF_BUCKET_TOKEN is not None:
+        huggingface_hub.logout(HF_BUCKET_TOKEN)
+
 app_predict = FastAPI(
+    lifespan=lifespan,
     title="API de prédiction du risque de retard de paiement",
     description="""
 API de prédiction du risque de retard de paiement
