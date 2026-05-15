@@ -59,7 +59,7 @@ Pour éxécuter l'UI en local (nécéssite d'éxécuter l'API en même temps sur
 
 *.github/* définit le pipeline CI/CD, qui lance les tests automatiques à chaque pull request et qui envoie le code sur le space huggingface à chaque push sur la branche *main*.
 
-*logs/* contient le script [export_logs](/logs/export_logs.py) qui permet de télécharger les logs (si HF_BUCKET_TOKEN est set) et de les exporter au format parquet. C'est aussi là que les logs sont enregistrés en local. Ils consistent en une base de données (archivée et renouvelée à intervalles réguliers) qui collecte, dans plusieurs tables adaptées aux données à stocker, les requêtes reçues par l'API (heure de réception, endpoint concerné et temps de calcul) et les entrées et les sorties des endpoints appelés (pour ceux où c'est pertinent).
+*logs/* contient le script [export_logs](/logs/export_logs.py) qui permet de télécharger les logs (si HF_BUCKET_TOKEN est set) et de les exporter au format parquet. C'est aussi là que les logs sont enregistrés en local. Ils consistent en une base de données (archivée et renouvelée à intervalles réguliers) qui collecte, dans plusieurs tables adaptées aux données à stocker, les requêtes reçues par l'API (heure de réception, endpoint concerné et temps de calcul) et les entrées et les sorties des endpoints appelés (pour ceux où c'est pertinent). Les tables peuvent être croisées grâce à la colonne *call_time*.
 
 *tests/* contient les tests automatiques (à exécuter avec pytest).
 
