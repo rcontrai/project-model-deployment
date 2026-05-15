@@ -2,6 +2,7 @@ import streamlit as st
 import httpx
 import numpy as np
 from matplotlib import pyplot as plt
+import plotly.graph_objects as go
 import os
 import pickle
 
@@ -52,6 +53,19 @@ def load_figure(filename:str):
     with open(os.path.join(ASSETS_DIR, filename), 'rb') as f:
         figure = pickle.load(f)
     return figure
+
+@st.cache_data
+def generate_gauge_graph(threshold:float):
+    gauge = go.Indicator(
+      mode = "gauge+number",
+      value = 0.,
+      number = {"valueformat": ".1%"},
+      domain = {'x': [0.15, 0.85], 'y': [0, 1]},
+      gauge = {
+        'axis': {'range': [0., 1.]},
+        'bar' : {'color': "blue"},
+        'threshold' : {'line': {'color': "gray", 'width': 4}, 'thickness': 0.75, 'value': threshold}})
+    return gauge
 
 # Paramètres des entrées
 # Copié-collé des dictionnaires définis dans src.feature_engineering_small.shrink_app
@@ -213,10 +227,18 @@ with tabs[1]:
         decison_text = "❌Reject" if prediction["prediction"] else "✅Accept"
         threshold = get_decision_threshold().json()["threshold"]
         score = prediction["probability"]
-        st.markdown(f"*Prediction for application \\#{prediction["sk_id_curr"]}*")
-        st.markdown("**Decision**: " + decison_text)
-        st.markdown(f"**Risk score**: {score:.1%}" +
-                    f"\\\n:small[*decision threshold: {threshold:.1%}*]")
+        col1, col2 = st.columns([0.5, 0.5])
+        with col1:
+            st.markdown(f"*Prediction for application \\#{prediction["sk_id_curr"]}*")
+            st.markdown("**Decision**: " + decison_text)
+            st.markdown(f"**Risk score**: {score:.1%}" +
+                        f"\\\n:small[*decision threshold: {threshold:.1%}*]")
+        with col2:
+            gauge = generate_gauge_graph(threshold)
+            gauge.value = score
+            gauge.gauge.bar.color = barcolor = "red" if prediction["prediction"] else "green"
+            fig = go.Figure(gauge, layout=go.Layout(margin=dict(l=0, r=0, b=0, t=0, pad=0)))
+            st.plotly_chart(fig, width="content", height=145)
         percentiles_neg, percentiles_pos = load_percentiles()
         col1, col2 = st.columns(2)
         with col1:
