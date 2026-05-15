@@ -34,7 +34,7 @@ Les scripts sont faits pour s'éxécuter à l'intérieur d'un conteneur. [build-
 | ------------- | ------------- |
 | APP_PORT  | port utilisé par l'application  |
 | LOGGING_PERIOD  | (optionnel) période de synchronisation des logs en secondes (défaut 21600) |
-| HF_BUCKET_URL | (optionnel) chemin du bucket huggingface où uploader les logs |
+| HF_BUCKET_URL | (optionnel) chemin du bucket huggingface où uploader les logs. Dans la version déployée, il s'agit de [rcontrai/project-model-deployment](https://huggingface.co/buckets/rcontrai/project-model-deployment/) |
 | HF_BUCKET_TOKEN | (optionnel) token d'accès au bucket |
 
 L'application est disponible sur localhost:APP_PORT\
