@@ -17,11 +17,13 @@ test_examples = [ # exemples de test, identifiés par leur SK_ID_CURR
 ]
 
 def test_get_application_data_ok():
+    # Absence d'erreur dans les cas normaux
     for sk_id_curr in test_examples:
         response = client.post("/get_application_data", json={"sk_id_curr":str(sk_id_curr)})
         assert response.status_code == 200
 
 def test_get_application_data_nok():
+    # Erreurs quand les entrées sont interdites
     too_small = applications["SK_ID_CURR"].min() - 1
     response = client.post("/get_application_data", json={"sk_id_curr":str(too_small)})
     assert response.status_code == 422
@@ -32,6 +34,7 @@ def test_get_application_data_nok():
     assert response.status_code == 422
 
 def test_predict_ok():
+    # Absence d'erreur dans les cas normaux
     for sk_id_curr in test_examples:
         get_appdata_response = client.post("/get_application_data", json={"sk_id_curr":str(sk_id_curr)})
         predict_body = get_appdata_response.json()
@@ -42,6 +45,7 @@ def test_predict_ok():
         assert predict_response_body["probability"] is not None
 
 def test_predict_nok():
+    # Erreurs quand les entrées sont interdites
     get_appdata_response = client.post("/get_application_data", json={"sk_id_curr":str(test_examples[0])})
     base_predict_body:dict = get_appdata_response.json()
     nok_values = {
@@ -70,6 +74,7 @@ def test_predict_nok():
             assert predict_response.status_code == 422
 
 def test_predict_consistent():
+    # Cohérence des résultats entre les appels à l'API et les calculs en local
     for sk_id_curr in test_examples:
         # Résultat calculé avec l'API
         get_appdata_response = client.post("/get_application_data", json={"sk_id_curr":str(sk_id_curr)})
