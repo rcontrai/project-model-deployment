@@ -135,7 +135,7 @@ def generate_percentile_text(score:float, percentiles:np.ndarray, group_name:str
 
 # Contenu de la page
 
-st.title("Default risk prediction app")
+st.title("🏦 Default risk prediction app")
 
 if "id_submitted" not in st.session_state:
     st.session_state.id_submitted = False
