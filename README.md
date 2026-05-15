@@ -69,7 +69,7 @@ Pour éxécuter l'UI en local (nécéssite d'éxécuter l'API en même temps sur
 
 *.streamlit/* config de streamlit.
 
-*data/* données utilisées pour l'inférence.
+*data/* données utilisées pour l'inférence. Ces fichiers ont été générés à partir des données du challenge Kaggle, en utilisant les fonctions *shrink_app*, *shrink_bureau* et *shrink_prev_app* de [feature_engineering_small.py](/src/feature_engineering_small.py) pour réduire leur taille au maximum.
 
 *models/* le modèle à déployer au format pickle, avec des informations supplémentaires au format json.
 
